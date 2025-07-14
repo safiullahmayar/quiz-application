@@ -30,7 +30,7 @@
                 <!-- Default box -->
                 <!-- /.card -->
                 <div class="card mt-4">
-                    
+
                     <div class="card-body">
                         <h2>Student information</h2>
                         <table class="table">
@@ -65,9 +65,13 @@
                                 <td>Wrong ans : </td>
                                 <td>{{ $result_info->no_ans}}</td>
                             </tr>
+                             <tr>
+                                <td>Negative Marks : </td>
+                                <td>{{ $result_info->negative_mark}}</td>
+                            </tr>
                             <tr>
                                 <td>Total : </td>
-                                <td>{{ $result_info->yes_ans+$result_info->no_ans}}</td>
+                                <td>{{ $result_info->yes_ans-$result_info->negative_mark}}</td>
                             </tr>
                         </table>
                     </div>
@@ -83,5 +87,5 @@
     <!-- Modal -->
 
 
- 
+
 @endsection

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateOexResultsTable extends Migration
+class CreateUfmsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,15 +13,12 @@ class CreateOexResultsTable extends Migration
      */
     public function up()
     {
-        Schema::create('oex_results', function (Blueprint $table) {
+        Schema::create('ufms', function (Blueprint $table) {
             $table->id();
-            $table->string('exam_id');
-            $table->string('user_id');
-            $table->string('yes_ans');
-            $table->string('no_ans');
-            $table->string('result_json');
-            $table->string('negative_mark')->nullable();
-
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('exam_id')->nullable();
+            $table->text('description')->nullable();
+            $table->boolean('ufm_flag')->default(true); // Marks as UFM case
             $table->timestamps();
         });
     }
@@ -33,6 +30,6 @@ class CreateOexResultsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('oex_results');
+        Schema::dropIfExists('ufms');
     }
 }

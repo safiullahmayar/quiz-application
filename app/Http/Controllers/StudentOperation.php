@@ -8,6 +8,7 @@ use App\Models\Oex_student;
 use App\Models\Oex_exam_master;
 use App\Models\Oex_question_master;
 use App\Models\Oex_result;
+use App\Models\ufm;
 use App\Models\User;
 use App\Models\user_exam;
 
@@ -67,45 +68,120 @@ public function heartbeat(Request $request)
     return response()->json(['status' => 'ok']);
 }
     //On submit
-    public function submit_questions(Request $request){
 
+// public function submit_questions(Request $request)
+// {
+//     $yes_ans = 0;
+//     $no_ans = 0;
+//     $data = $request->all();
+//     $result = [];
 
-        $yes_ans=0;
-        $no_ans=0;
-        $data= $request->all();
-        $result=array();
-        for($i=1;$i<=$request->index;$i++){
+//     for ($i = 1; $i <= $request->index; $i++) {
+//         if (isset($data['question' . $i])) {
+//             $q = Oex_question_master::find($data['question' . $i]);
 
-            if(isset($data['question'.$i])){
-                    $q=Oex_question_master::where('id',$data['question'.$i])->get()->first();
+//             if ($q && $q->ans == $data['ans' . $i]) {
+//                 $result[$data['question' . $i]] = 'YES';
+//                 $yes_ans++;
+//             } else {
+//                 $result[$data['question' . $i]] = 'NO';
+//                 $no_ans++;
+//             }
+//         }
+//     }
 
-                    if($q->ans==$data['ans'.$i]){
-                        $result[$data['question'.$i]]='YES';
-                        $yes_ans++;
-                    }else{
-                        $result[$data['question'.$i]]='NO';
-                        $no_ans++;
-                    }
-            }
-        }
+//     // Update exam join status
+//     $std_info = user_exam::where('user_id', Session::get('id'))
+//         ->where('exam_id', $request->exam_id)
+//         ->first();
+//     if ($std_info) {
+//         $std_info->exam_joined = 1;
+//         $std_info->update();
+//     }
 
-       $std_info = user_exam::where('user_id',Session::get('id'))->where('exam_id',$request->exam_id)->get()->first();
-       $std_info->exam_joined=1;
-       $std_info->update();
+//     // Store result
+//     $res = new Oex_result();
+//     $res->exam_id = $request->exam_id;
+//     $res->user_id = Session::get('id');
+//     $res->yes_ans = $yes_ans;
+//     $res->no_ans = $no_ans;
+//     $res->result_json = json_encode($result);
+//     $res->save();
 
+//     // 👇 UFM Auto Submission Case
+//     if ($request->has('auto_submitted')) {
+//         ufm::create([
+//             'user_id' => Session::get('id'),
+//             'exam_id' => $request->exam_id,
+//             'description' => 'you are cheater ..',
+//             'ufm_flag' => true
+//         ]);
+//     }
 
-       $res = new Oex_result();
-       $res->exam_id=$request->exam_id;
-       $res->user_id = Session::get('id');
-       $res->yes_ans=$yes_ans;
-       $res->no_ans=$no_ans;
-       $res->result_json=json_encode($result);
+//     return redirect(url('student/exam'))->with('success', 'Test Submitted Successfully');
+// }
 
-       echo $res->save();
-       return redirect(url('student/exam'));
+public function submit_questions(Request $request)
+{
+    $yes_ans = 0;
+    $no_ans = 0;
+    $data = $request->all();
+    $result = [];
+    $negative_mark = 0;
+
+    // Check if negative marks should be applied
+    if ($request->has('negative_mark') && $request->negative_mark == '5') {
+        $negative_mark = 5;
     }
 
+    for ($i = 1; $i <= $request->index; $i++) {
+        if (isset($data['question' . $i])) {
+            $q = Oex_question_master::find($data['question' . $i]);
 
+            if ($q && $q->ans == $data['ans' . $i]) {
+                $result[$data['question' . $i]] = 'YES';
+                $yes_ans++;
+            } else {
+                $result[$data['question' . $i]] = 'NO';
+                $no_ans++;
+            }
+        }
+    }
+
+    // Update exam join status
+    $std_info = user_exam::where('user_id', Session::get('id'))
+        ->where('exam_id', $request->exam_id)
+        ->first();
+    if ($std_info) {
+        $std_info->exam_joined = 1;
+        $std_info->update();
+    }
+
+    // Store result
+    $res = new Oex_result();
+    $res->exam_id = $request->exam_id;
+    $res->user_id = Session::get('id');
+    $res->yes_ans = $yes_ans;
+    $res->no_ans = $no_ans;
+    $res->negative_mark = $negative_mark;
+    $res->result_json = json_encode($result);
+
+
+
+    $res->save();
+
+    // UFM record for cheating attempts (only for actual auto-submissions)
+    if ($request->has('auto_submitted') && $request->auto_submitted != 'first_tab_switch') {
+        ufm::create([
+            'user_id' => Session::get('id'),
+            'exam_id' => $request->exam_id,
+            'description' => 'Exam was auto-submitted due to: ' . $request->auto_submitted,
+            'ufm_flag' => true
+        ]);
+    }
+
+    return redirect(url('student/exam'))->with('success', 'Test Submitted Successfully');
+}
 
     //Applying for exam
     public function apply_exam($id){
@@ -141,11 +217,11 @@ public function heartbeat(Request $request)
 
             $data['student_info'] = User::where('id',Session::get('id'))->get()->first();
 
-            $data['exam_info']=Oex_exam_master::where('id',$id)->get()->first();
+            $data['exam_info']=Oex_exam_master::where('id',$id)->latest('id')->first();
 
             return view('student.view_result',$data);
     }
-
+// >orderByDesc('id')
 
     //View answer
     public function view_answer($id){

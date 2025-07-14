@@ -23,7 +23,7 @@ class AdminController extends Controller
 
         $user_count = User::get()->count();
         $exam_count = Oex_exam_master::get()->count();
-        $admin_count = Admin::get()->count();
+        $admin_count = Admin::get();
         return view('admin.dashboard',['student'=>$user_count,'exam'=>$exam_count,'admin'=>$admin_count]);
     }
 
@@ -209,11 +209,11 @@ class AdminController extends Controller
     public function add_new_students(Request $request){
 
         $validator = Validator::make($request->all(),[
-            'name'=>'required',
-            'email'=>'required',
-            'mobile_no'=>'required',
-            'exam'=>'required',
-            'password'=>'required'
+            'name' => 'required|string|max:255',
+     'email' => 'required|email|max:255',
+    'mobile_no' => 'required|digits_between:10,15',
+    'exam' => 'required',
+    'password' => 'required|string|min:6',
 
         ]);
 
@@ -430,10 +430,42 @@ class AdminController extends Controller
 
         $data['exam_info'] = Oex_exam_master::where('id',$std_exam->exam_id)->get()->first();
 
-        $data['result_info'] = Oex_result::where('exam_id',$std_exam->exam_id)->where('user_id',$std_exam->user_id)->get()->first();
+      $data['result_info'] = Oex_result::where('exam_id', $std_exam->exam_id)
+    ->where('user_id', $std_exam->user_id)
+    ->orderByDesc('id') // order from highest to lowest (latest first)
+    ->first();
 
         return view('admin.admin_view_result',$data);
 
 
     }
+ public function add_new_admins(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'name' => 'required',
+        'email' => 'required|email|unique:admins,email',
+        'password' => 'required|min:6',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'errors' => $validator->errors()
+        ], 422); // Return validation errors
+    }
+
+    $admin = new Admin();
+    $admin->name = $request->name;
+    $admin->email = $request->email;
+    $admin->password = bcrypt($request->password);
+    $admin->save();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Admin Added Successfully'
+    ]);
+}
+
+
+
 }

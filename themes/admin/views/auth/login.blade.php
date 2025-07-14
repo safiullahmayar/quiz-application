@@ -4,12 +4,12 @@
             <div class="col-md-8">
                 <div class="card">
                     {{-- <div class="card-header">{{ __('Login') }}</div> --}}
-                    
+
                     <div class="card-body">
-                        <h1 class="text-center"><b>Admin Login</b> </h1>
+                        {{-- <h1 class="text-center"><b>Admin Login</b> </h1> --}}
                         <form method="POST" action="{{ route('admin.login') }}" class="mt-4">
                             @csrf
-
+x
                             <div class="form-group row">
                                 <label for="email" class="col-md-4 col-form-label text-md-right">{{ __('E-Mail Address') }}</label>
 

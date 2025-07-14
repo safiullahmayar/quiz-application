@@ -34,6 +34,18 @@
         padding-top: 20%;
         z-index: 10000;
     }
+    #negative-mark-notification {
+        position: fixed;
+        top: 50px;
+        left: 0;
+        width: 100%;
+        background-color: #ff0000;
+        color: white;
+        text-align: center;
+        padding: 15px;
+        z-index: 9999;
+        display: none;
+    }
 </style>
 
 <!-- Warning messages -->
@@ -43,6 +55,9 @@
 <div id="fullscreen-warning">
     <h2>Fullscreen mode is required for this exam</h2>
     <button id="enter-fullscreen" class="btn btn-primary btn-lg">Enter Fullscreen</button>
+</div>
+<div id="negative-mark-notification">
+    <strong>Warning:</strong> 5 marks have been deducted for leaving the exam window!
 </div>
 
 <!-- Content Wrapper -->
@@ -92,7 +107,9 @@
                     <input type="hidden" id="exam_id" value="{{ Request::segment(3) }}">
 
                     <div class="row">
+                        @php $questionCount = 0; @endphp
                         @foreach ($question as $key=>$q)
+                            @php $questionCount++; @endphp
                             <div class="col-sm-12 mt-4">
                               <p>{{$key+1}}. {{ $q->questions}}</p>
                               <?php
@@ -110,7 +127,7 @@
                         @endforeach
 
                         <div class="col-sm-12">
-                            <input type="hidden" name="index" value="{{ $key+1}}">
+                            <input type="hidden" name="index" value="{{ $questionCount }}">
                             <button type="submit" class="btn btn-primary" id="myCheck">Submit</button>
                         </div>
                    </div>
@@ -123,18 +140,25 @@
       </section>
     </div>
 </div>
-
 <script>
 // Global variables
 let tabChanged = false;
 let warningShown = false;
 let submitTimeout;
+let firstTabSwitch = true; // Track first tab switch
+let firstFullscreenExit = true; // Track first fullscreen exit
 let examId = document.getElementById('exam_id').value;
 let userId = {{ auth()->user()->id }};
 let quizToken = 'quiz_' + userId + '_' + examId + '_' + Math.random().toString(36).substring(2, 15);
+let examStarted = false; // Track if exam has started
 
 // Initialize fullscreen requirement
 document.addEventListener('DOMContentLoaded', function() {
+    // Set exam as started after a small delay
+    setTimeout(() => {
+        examStarted = true;
+    }, 1000);
+
     // Check if fullscreen is required
     if (!document.fullscreenElement) {
         document.getElementById('fullscreen-warning').style.display = 'block';
@@ -146,136 +170,135 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Start heartbeat
     startHeartbeat();
+
+    // Add fullscreen change listener
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 });
 
-// Fullscreen handler
-document.getElementById('enter-fullscreen').addEventListener('click', function() {
-    document.documentElement.requestFullscreen().then(() => {
+// Handle fullscreen change events
+function handleFullscreenChange() {
+    // Only act if exam has started
+    if (!examStarted) return;
+
+    if (!document.fullscreenElement) {
+        // User exited fullscreen
+        handleFullscreenExit();
+    } else {
+        // User entered fullscreen - reset first exit flag
+        firstFullscreenExit = true;
         document.getElementById('fullscreen-warning').style.display = 'none';
-    }).catch(err => {
-        alert('Fullscreen error: ' + err.message);
-    });
-});
+        clearTimeout(submitTimeout);
+    }
+}
+
+function handleFullscreenExit() {
+    // Only act if exam has started
+    if (!examStarted) return;
+
+    // Show fullscreen warning
+    document.getElementById('fullscreen-warning').style.display = 'block';
+
+    // First time: deduct marks
+    if (firstFullscreenExit) {
+        firstFullscreenExit = false;
+        deductMarks();
+
+        // Set timeout for submission if they don't return
+        submitTimeout = setTimeout(function() {
+            submitQuiz('fullscreen_exit_timeout');
+        }, 3000); // 3 seconds grace period
+    }
+    // Second time: submit immediately
+    else {
+        clearTimeout(submitTimeout); // Clear any existing timeout
+        submitQuiz('second_fullscreen_exit');
+    }
+}
 
 // Function to submit the form
 function submitQuiz(reason) {
-    // Add a hidden field to indicate auto-submission
+    // Only submit if exam has started
+    if (!examStarted) return;
+
     let input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'auto_submitted';
     input.value = reason || 'tab_switch';
     document.getElementById('quizForm').appendChild(input);
-
-    // Submit the form
     document.getElementById('quizForm').submit();
 }
+// Fullscreen handler with better browser support
+document.getElementById('enter-fullscreen').addEventListener('click', function() {
+    // Try to enter fullscreen mode
+    const element = document.documentElement;
 
-// Visibility change detection
-document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden') {
-        handleTabSwitch();
-    } else if (warningShown) {
-        // User returned to the tab
-        document.getElementById('warning-message').style.display = 'none';
+    // Standard method (most browsers)
+    if (element.requestFullscreen) {
+        element.requestFullscreen().then(() => {
+            // Success - hide the warning
+            document.getElementById('fullscreen-warning').style.display = 'none';
+        }).catch(err => {
+            // Failure - show error
+            alert("Could not enable fullscreen: " + err.message);
+            console.error("Fullscreen error:", err);
+        });
+    }
+    // WebKit (Safari) method
+    else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+        document.getElementById('fullscreen-warning').style.display = 'none';
+    }
+    // Firefox method
+    else if (element.mozRequestFullScreen) {
+        element.mozRequestFullScreen();
+        document.getElementById('fullscreen-warning').style.display = 'none';
+    }
+    // IE/Edge method
+    else if (element.msRequestFullscreen) {
+        element.msRequestFullscreen();
+        document.getElementById('fullscreen-warning').style.display = 'none';
+    }
+    else {
+        alert("Fullscreen is not supported by your browser");
+    }
+});
+
+// Enhanced fullscreen change detection
+function handleFullscreenChange() {
+    // Check all possible fullscreen states
+    const isFullscreen = document.fullscreenElement ||
+                        document.webkitFullscreenElement ||
+                        document.mozFullScreenElement ||
+                        document.msFullscreenElement;
+
+    if (!isFullscreen) {
+        // User exited fullscreen
+        handleFullscreenExit();
+    } else {
+        // User entered fullscreen - hide warning and clear timeout
+        document.getElementById('fullscreen-warning').style.display = 'none';
         clearTimeout(submitTimeout);
     }
-});
-
-// Window blur detection (for older browsers)
-window.addEventListener('blur', function() {
-    handleTabSwitch();
-});
-
-function handleTabSwitch() {
-    // User switched tabs or minimized window
-    tabChanged = true;
-    document.getElementById('warning-message').style.display = 'block';
-    warningShown = true;
-
-    // Submit immediately or after delay
-    submitTimeout = setTimeout(function() {
-        submitQuiz('tab_switch_timeout');
-    }, 3000); // 3 seconds grace period
 }
 
-// Prevent keyboard shortcuts for new tabs/windows
-document.addEventListener('keydown', function(e) {
-    // Ctrl/Command + T, N, Tab, etc.
-    if ((e.ctrlKey || e.metaKey) &&
-        (e.key === 't' || e.key === 'T' ||
-         e.key === 'n' || e.key === 'N' ||
-         e.key === 'Tab')) {
-        e.preventDefault();
-        alert('Opening new tabs/windows is not allowed during the exam.');
-    }
+// Add event listeners for all browser variants
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+// Function to deduct marks
+function deductMarks() {
+    // Add hidden input to form for mark deduction
+    let input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'negative_mark';
+    input.value = '5';
+    document.getElementById('quizForm').appendChild(input);
 
-    // F11 for fullscreen toggling (optional)
-    if (e.key === 'F11') {
-        e.preventDefault();
-    }
-});
-
-// Prevent right-click
-document.addEventListener('contextmenu', function(e) {
-    e.preventDefault();
-    alert('Right-click is disabled during the exam.');
-});
-
-// Prevent copy/paste
-['copy', 'cut', 'paste'].forEach(function(event) {
-    document.addEventListener(event, function(e) {
-        e.preventDefault();
-        alert('This action is not allowed during the exam.');
-    });
-});
-
-// Detect if this is a duplicate tab
-window.addEventListener('load', function() {
-    if (sessionStorage.getItem('quizActive') === 'true' &&
-        sessionStorage.getItem('quizToken') !== quizToken) {
-        // This is a duplicate tab - submit immediately
-        submitQuiz('duplicate_tab');
-    }
-});
-
-// Clear the flag when leaving normally
-window.addEventListener('beforeunload', function() {
-    if (!tabChanged) {
-        sessionStorage.removeItem('quizActive');
-    }
-});
-
-// Heartbeat to server to detect multiple tabs
-function startHeartbeat() {
-    // Initial heartbeat
-    sendHeartbeat();
-
-    // Regular heartbeat every 2 seconds
-    setInterval(sendHeartbeat, 2000);
-}
-
-function sendHeartbeat() {
-    fetch('/quiz/heartbeat', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({
-            token: quizToken,
-            exam_id: examId,
-            user_id: userId
-        })
-    }).then(response => {
-        if (!response.ok) throw new Error('Network error');
-        return response.json();
-    }).then(data => {
-        if (data.status === 'duplicate') {
-            submitQuiz('server_duplicate_detected');
-        }
-    }).catch(error => {
-        console.error('Heartbeat error:', error);
-    });
+    // Show notification
+    document.getElementById('negative-mark-notification').style.display = 'block';
+    setTimeout(() => {
+        document.getElementById('negative-mark-notification').style.display = 'none';
+    }, 5000);
 }
 </script>
-@endsection

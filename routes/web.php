@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StudentOperation;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\UfmController;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -62,7 +63,15 @@ Route::prefix('admin')->middleware('theme:dashboard')->name('admin.')->group(fun
             Route::post('/edit_new_category',[AdminController::class,'edit_new_category']);
             Route::post('/edit_exam_sub',[AdminController::class,'edit_exam_sub']);
             Route::post('/add_new_students',[AdminController::class,'add_new_students']);
+        //   ufm
+            Route::get('/ufm_list',[UfmController::class,'ufm_list']);
 
+// Delete UFM record
+Route::delete('/admin/ufm/{id}', [UfmController::class, 'destroy'])->name('ufm.destroy');
+// create admin
+ Route::post('/add_new_admins',[AdminController::class,'add_new_admins']);
+            Route::post('/edit_admins',[AdminController::class,'edit_admins']);
+            Route::post('/delete_admins',[AdminController::class,'delete_admins']);
         });
 
 
@@ -85,13 +94,8 @@ Route::prefix('student')->middleware('theme:dashboard')->name('student.')->group
         Route::get('/apply_exam/{id}',[StudentOperation::class,'apply_exam']);
         Route::get('/view_result/{id}',[StudentOperation::class,'view_result']);
         Route::get('/view_answer/{id}',[StudentOperation::class,'view_answer']);
-
-
-
         Route::get('/logout',[AuthenticatedSessionController::class,'destroy']);
     });
-
-
 });
 
 

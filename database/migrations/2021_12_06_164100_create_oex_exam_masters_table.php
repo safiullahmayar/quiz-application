@@ -19,7 +19,9 @@ class CreateOexExamMastersTable extends Migration
             $table->string('category')->nullable();
             $table->string('exam_date')->nullable();
             $table->string('exam_duration')->nullable();
-            $table->string('status')->nullable(); 
+            $table->string('created_by')->nullable(); // Assuming this is the admin ID who created the category
+            
+            $table->string('status')->nullable();
             $table->timestamps();
         });
     }

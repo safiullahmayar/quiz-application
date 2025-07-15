@@ -18,6 +18,8 @@ class CreateOexQuestionMastersTable extends Migration
             $table->string('exam_id')->nullable();
             $table->string('questions')->nullable();
             $table->string('ans')->nullable();
+            $table->string('created_by')->nullable(); // Assuming this is the admin ID who created the category
+
             $table->string('options')->nullable();
             $table->string('status')->nullable();
             $table->timestamps();

@@ -71,7 +71,7 @@ Route::delete('/admin/ufm/{id}', [UfmController::class, 'destroy'])->name('ufm.d
 // create admin
  Route::post('/add_new_admins',[AdminController::class,'add_new_admins']);
             Route::post('/edit_admins',[AdminController::class,'edit_admins']);
-            Route::post('/delete_admins',[AdminController::class,'delete_admins']);
+            Route::post('/delete_admins/{id}',[AdminController::class,'delete_admins']);
         });
 
 

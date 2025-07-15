@@ -17,6 +17,7 @@ class CreateOexCategoriesTable extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->integer('status')->nullable();
+            $table->string('created_by')->nullable(); // Assuming this is the admin ID who created the category
             $table->timestamps();
         });
     }

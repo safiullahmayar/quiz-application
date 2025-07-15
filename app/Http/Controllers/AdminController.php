@@ -15,23 +15,27 @@ use Illuminate\Support\Facades\Session;
 use App\Models\user_exam;
 use App\Models\Admin;
 use App\Models\Oex_result;
+use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
     // admin dashboard
-    public function index(){
+    public function index(Request $request){
 
         $user_count = User::get()->count();
         $exam_count = Oex_exam_master::get()->count();
-        $admin_count = Admin::get();
-        return view('admin.dashboard',['student'=>$user_count,'exam'=>$exam_count,'admin'=>$admin_count]);
+        $admins = Admin::get();
+
+        $admin_count = Admin::where('id', auth()->id())->first();
+
+        return view('admin.dashboard',['student'=>$user_count,'exam'=>$exam_count,'admin'=>$admin_count,'admins'=>$admins]);
     }
 
 
     //Exam categories
     public function exam_category(){
 
-        $data['category']=Oex_category::get()->toArray();
+        $data['category']=Oex_category::where('created_by',auth()->id())->get()->toArray();
         return view('admin.exam_category',$data);
     }
 
@@ -41,6 +45,7 @@ class AdminController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required',
+            // 'creaeted_by' => 'required', // Assuming this is the admin ID who created the category
         ]);
 
         if($validator->fails()){
@@ -51,6 +56,7 @@ class AdminController extends Controller
             $cat = new Oex_category();
             $cat->name = $request->name;
             $cat->status = 1;
+            $cat->created_by = auth()->id(); // Assuming this is the admin ID who created the category
             $cat->save();
             $arr=array('status'=>'true','message'=>'Success','reload'=>url('admin/exam_category'));
         }
@@ -105,11 +111,26 @@ class AdminController extends Controller
 
 
     //Manage exam page
-    public function manage_exam(){
-        $data['category']=Oex_category::where('status','1')->get()->toArray();
-        $data['exams']=Oex_exam_master::select(['oex_exam_masters.*','oex_categories.name as cat_name'])->join('oex_categories','oex_exam_masters.category','=','oex_categories.id')->get()->toArray();
-        return view('admin.manage_exam',$data);
-    }
+    public function manage_exam() {
+    // Show categories that are either active or created by current user
+    $data['category'] = Oex_category::where(function($query) {
+        $query->where('status', 1)
+              ->Where('created_by', auth()->id());
+    })->get()->toArray();
+
+    // Show exams only created by current admin
+    $data['exams'] = Oex_exam_master::select([
+            'oex_exam_masters.*',
+            'oex_categories.name as cat_name'
+        ])
+        ->join('oex_categories', 'oex_exam_masters.category', '=', 'oex_categories.id')
+        ->where('oex_exam_masters.created_by', auth()->id())
+        ->get()
+        ->toArray();
+
+    return view('admin.manage_exam', $data);
+}
+
 
 
 
@@ -129,6 +150,7 @@ class AdminController extends Controller
                 $exam->exam_duration = $request->exam_duration;
                 $exam->category = $request->exam_category;
                 $exam->status = 1;
+                $exam->created_by = auth()->id(); // Assuming this is the admin ID who created the exam
                 $exam->save();
 
                 $arr = array('status'=>'true','message'=>'exam added successfully','reload'=>url('admin/manage_exam'));
@@ -168,7 +190,11 @@ class AdminController extends Controller
 
     //Edit Exam
     public function edit_exam($id){
-        $data['category']=Oex_category::where('status','1')->get()->toArray();
+        // $data['category']=Oex_category::where('status','1')->get()->toArray();
+         $data['category'] = Oex_category::where(function($query) {
+        $query->where('status', 1)
+              ->Where('created_by', auth()->id()); // Include categories created by other admins
+    })->get()->toArray();
         $data['exam'] = Oex_exam_master::where('id',$id)->get()->first();
 
         return view('admin.edit_exam',$data);
@@ -227,7 +253,7 @@ class AdminController extends Controller
             $std->mobile_no = $request->mobile_no;
             $std->exam = $request->exam;
             $std->password = Hash::make($request->password);
-
+        $std->created_by = auth()->id(); // Assuming this is the admin ID who created the student
             $std->status=1;
 
             $std->save();
@@ -287,8 +313,7 @@ class AdminController extends Controller
     public function registered_students(){
         $data['exams']=Oex_exam_master::where('status','1')->get()->toArray();
 
-        $data['users'] = User::get()->all();
-
+        $data['users'] = User::where('created_by',Auth()->id())->get()->all();
 
         return view('admin.registered_students',$data);
     }
@@ -458,14 +483,33 @@ class AdminController extends Controller
     $admin->name = $request->name;
     $admin->email = $request->email;
     $admin->password = bcrypt($request->password);
-    $admin->save();
+   $add= $admin->save();
+   if(!$add) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to add admin'
+        ], 500); // Return server error
+    }
+    else {
+        // Optionally, you can log the admin creation or perform other actions
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Admin Added Successfully'
+        ]);
+    }
 
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Admin Added Successfully'
-    ]);
 }
+public function delete_admins($id)
+{
+    $admin = Admin::find($id);
+    if ($admin) {
+        $admin->delete();
+        return response()->json(['status' => 'success', 'message' => 'Admin deleted successfully']);
+    } else {
+        return response()->json(['status' => 'error', 'message' => 'Admin not found'], 404);
+    }
 
+}
 
 
 }

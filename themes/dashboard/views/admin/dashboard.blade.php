@@ -24,6 +24,8 @@
   <!-- /.content-header -->
 
   <!-- Main content: Small Stat Boxes -->
+                    @if($admin['is_admin'] == 1)
+
   <section class="content">
     <div class="container-fluid">
       <div class="row">
@@ -69,19 +71,22 @@
     </div>
   </section>
   <!-- /.Main stat box section -->
-
+@endif
   <!-- Main content: Admin Table -->
   <section class="content">
     <div class="container-fluid">
       <div class="row">
         <div class="col-12">
           <div class="card">
+                    @if($admin['is_admin'] == 1)
+
             <div class="card-header">
               <h3 class="card-title">Admins</h3>
               <div class="card-tools">
                 <a class="btn btn-info btn-sm" href="javascript:;" data-toggle="modal" data-target="#myModal">Add new</a>
               </div>
             </div>
+            @endif
             <div class="card-body">
               <table class="table table-striped table-bordered table-hover datatable">
                 <thead>
@@ -93,17 +98,31 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @foreach ($admin as $key => $std)
+                    @if($admin['is_admin'] == 1)
+                    @foreach ($admins as $key => $std)
                     <tr>
                       <td>{{ $key + 1 }}</td>
                       <td>{{ $std['name'] }}</td>
                       <td>{{ $std['email'] }}</td>
                       <td>
-                        <a href="{{ url('admin/edit_admins/'.$std['id']) }}" class="btn btn-primary btn-sm">Edit</a>
-                        <a href="{{ url('admin/delete_admins/'.$std['id']) }}" class="btn btn-danger btn-sm">Delete</a>
+                        {{-- <a href="{{ url('admin/edit_admins/'.$std['id']) }}" class="btn btn-primary btn-sm">Edit</a> --}}
+                        <a href="javascript:void(0);" class="btn btn-danger btn-sm delete-admin" data-id="{{ $std['id'] }}">Delete</a>
+
                       </td>
                     </tr>
-                  @endforeach
+                    @endforeach
+                    @else
+                       <tr>
+                      <td>1</td>
+                      <td>{{ $admin['name'] }}</td>
+                      <td>{{ $admin['email'] }}</td>
+                      <td>
+                        {{-- <a href="{{ url('admin/edit_admins/'.$admin['id']) }}" class="btn btn-primary btn-sm">Edit</a> --}}
+                        <a href="javascript:void(0);" class="btn btn-danger btn-sm delete-admin" data-id="{{ $admin['id'] }}">Delete</a>
+
+                      </td>
+                    </tr>
+                    @endif
                 </tbody>
               </table>
             </div>
@@ -162,34 +181,141 @@
     </div>
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 $(document).ready(function () {
     $('#addAdminForm').submit(function (e) {
-        e.preventDefault(); // prevent normal form submit
+        e.preventDefault(); // prevent default form submit
 
         var form = $(this);
         var url = form.attr('action');
+
+        // === FRONTEND VALIDATION ===
+        let email = form.find('input[name="email"]').val();
+        let emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!email || !emailRegex.test(email)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Email',
+                text: 'Please enter a valid email address.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+            return;
+        }
 
         $.ajax({
             type: "POST",
             url: url,
             data: form.serialize(),
             success: function (response) {
-                // Close modal
                 $('#myModal').modal('hide');
 
-                // Optionally show success alert
-                alert('Admin added successfully!');
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: response.message || 'Admin added successfully!',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
 
-                // Optionally reload table or page
-                location.reload();
+                setTimeout(function () {
+                    location.reload();
+                }, 1000);
             },
             error: function (xhr) {
-                // Handle validation errors
-                alert('Error: ' + xhr.responseJSON.message);
+                // Backend validation errors (Laravel)
+                if (xhr.status === 422) {
+                    let errors = xhr.responseJSON.errors;
+                    let firstError = Object.values(errors)[0][0];
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: firstError,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: xhr.responseJSON?.message || 'An error occurred.',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
             }
         });
     });
 });
 </script>
+
+
+
+
+<script>
+$(document).ready(function() {
+    $('.delete-admin').click(function(e) {
+        e.preventDefault();
+
+        let adminId = $(this).data('id');
+        let url = `/admin/delete_admins/${adminId}`;
+        let token = '{{ csrf_token() }}';
+        let row = $(this).closest('tr'); // optional if you want to remove the row
+
+        Swal.fire({
+            title: "Are you sure?",
+            text: "You won't be able to revert this!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: url,
+                    type: 'post',
+                    data: {
+                        _token: token
+                    },
+                    success: function(response) {
+                        Swal.fire(
+                            'Deleted!',
+                            response.message || 'Admin has been deleted.',
+                            'success'
+                        );
+                        row.fadeOut(500, function() {
+                            $(this).remove();
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire(
+                            'Error!',
+                            'Failed to delete admin.',
+                            'error'
+                        );
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
+
+
 @endsection

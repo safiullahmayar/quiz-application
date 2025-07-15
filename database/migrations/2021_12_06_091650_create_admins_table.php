@@ -19,6 +19,8 @@ class CreateAdminsTable extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('is_admin')->default(0); // Assuming is_admin is a boolean field to check if the user is an admin
+
             $table->rememberToken();
             $table->timestamps();
         });

@@ -29,7 +29,7 @@
               <div class="card">
                 <div class="card-header">
                   <h3 class="card-title">Title</h3>
-  
+
                   <div class="card-tools">
                         <a class="btn btn-info btn-sm" href="javascript:;" data-toggle="modal" data-target="#myModal">Add new</a>
                   </div>
@@ -43,6 +43,7 @@
                             <th>Actions</th>
                         </thead>
                         <tbody>
+                           
                             @foreach ($category as $key => $cat)
                              <tr>
                                  <td><?php echo $key+1 ?></td>
@@ -52,11 +53,11 @@
                                      <a href="{{ url('admin/edit_category/'.$cat['id'])}}" class="btn btn-info">Edit</a>
                                      <a href="{{ url('admin/delete_category/'.$cat['id'])}}" class="btn btn-danger">Delete</a>
                                  </th>
-                             </tr>   
+                             </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
-                            
+
                         </tfoot>
                     </table>
                 </div>
@@ -73,7 +74,7 @@
     <!-- Modal -->
 <div class="modal fade" id="myModal" role="dialog">
     <div class="modal-dialog">
-    
+
       <!-- Modal content-->
       <div class="modal-content">
         <div class="modal-header">
@@ -81,7 +82,7 @@
           <button type="button" class="close" data-dismiss="modal">&times;</button>
         </div>
         <div class="modal-body">
-          <form action="{{ url('/admin/add_new_category')}}" class="database_operation" method="POST">  
+          <form action="{{ url('/admin/add_new_category')}}" class="database_operation" method="POST">
                 <div class="row">
                     <div class="col-sm-12">
                         <div class="form-group">
@@ -98,10 +99,10 @@
                 </div>
         </form>
       </div>
-      
+
     </div>
-    </div>	
+    </div>
 
 
- 
+
 @endsection

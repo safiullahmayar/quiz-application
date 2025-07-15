@@ -74,7 +74,7 @@
               <h6 class="font-weight-normal text-muted pb-3">Create and take students assesment tests in very reliable and fast way</h6>
               <div>
                       <a href="{{ url('/login') }}" class="btn btn-opacity-light mr-1"><b>Student Login</b></a>
-                      <a href="{{ route('register') }}"class="btn btn-opacity-success ml-1"><b>Student Register</b></a>
+                      {{-- <a href="{{ route('register') }}"class="btn btn-opacity-success ml-1"><b>Student Register</b></a> --}}
 
               </div>
               <img src="{{ url('assets/images/Group171.svg')}}" alt="" class="img-fluid">
